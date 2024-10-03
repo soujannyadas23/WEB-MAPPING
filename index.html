@@ -1,0 +1,1076 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet-search.css">
+        <link rel="stylesheet" href="css/filter.css">
+<link rel="stylesheet" href="css/nouislider.min.css">
+        <link rel="stylesheet" href="css/leaflet-control-geocoder.Geocoder.css">
+        <link rel="stylesheet" href="css/leaflet-measure.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title>Bank & ATMs Route Optimization </title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet-control-geocoder.Geocoder.js"></script>
+        <script src="js/leaflet-measure.js"></script>
+        <script src="js/leaflet-search.js"></script>
+        <script src="js/tailDT.js"></script>
+<script src="js/nouislider.min.js"></script>
+<script src="js/wNumb.js"></script>
+        <script src="data/BASIRHAT_1.js"></script>
+        <script src="data/RoadofBasirhat_2.js"></script>
+        <script src="data/900mserviceareaofATM_3.js"></script>
+        <script src="data/900mserviceareaofBank_4.js"></script>
+        <script src="data/600mserviceareaofBank_5.js"></script>
+        <script src="data/600mserviceareaofATM_6.js"></script>
+        <script src="data/300mserviceareaofATM_7.js"></script>
+        <script src="data/300mserviceareaofBank_8.js"></script>
+        <script src="data/ROUTEOFALLBANK_9.js"></script>
+        <script src="data/ROUTEOFALLATM_10.js"></script>
+        <script src="data/Banks_11.js"></script>
+        <script src="data/ATMs_12.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        }).fitBounds([[22.624337093488617,88.79513427134195],[22.684820977132024,88.86625602396786]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // add class to format popup if it contains media
+		function addClassToPopupIfMedia(content, popup) {
+			var tempDiv = document.createElement('div');
+			tempDiv.innerHTML = content;
+			if (tempDiv.querySelector('td img')) {
+				popup._contentNode.classList.add('media');
+					// Delay to force the redraw
+					setTimeout(function() {
+						popup.update();
+					}, 10);
+			} else {
+				popup._contentNode.classList.remove('media');
+			}
+		}
+        var title = new L.Control({'position':'topright'});
+        title.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update();
+            return this._div;
+        };
+        title.update = function () {
+            this._div.innerHTML = '<h2>Bank & ATMs Route Optimization </h2>';
+        };
+        title.addTo(map);
+        var abstract = new L.Control({'position':'bottomleft'});
+        abstract.onAdd = function (map) {
+            this._div = L.DomUtil.create('div',
+            'leaflet-control abstract');
+            this._div.id = 'abstract'
+                this._div.setAttribute("onmouseenter", "abstract.show()");
+                this._div.setAttribute("onmouseleave", "abstract.hide()");
+                this.hide();
+                return this._div;
+            };
+            abstract.hide = function () {
+                this._div.classList.remove("abstractUncollapsed");
+                this._div.classList.add("abstract");
+                this._div.innerHTML = 'i'
+            }
+            abstract.show = function () {
+                this._div.classList.remove("abstract");
+                this._div.classList.add("abstractUncollapsed");
+                this._div.innerHTML = 'This Web GIS would be very helpful to the resident of Basirhat Municipality for finding their required Banks and ATMs along with routes between Banks and ATMs. People could be guided by this application for choosing their required Banks and ATMs from their own location.<br />This Web GIS has been developed by the group of students of the the Department of Earth Sciences and Remote Sensing of the JIS University, Kolkata under the mentorship of Dr. Ratnadeep Ray.<br />The students, whose tireless efforts and dedications have made this possible are: Mr. Soujannya Das, Ms. Soumi Khamrui, Ms. Tiyasa Das, and Ms. Saheli Dey.';
+        };
+        abstract.addTo(map);
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        L.control.locate({locateOptions: {maxZoom: 19}}).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        map.createPane('pane_OpenStreetMap_0');
+        map.getPane('pane_OpenStreetMap_0').style.zIndex = 400;
+        var layer_OpenStreetMap_0 = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            pane: 'pane_OpenStreetMap_0',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_OpenStreetMap_0;
+        map.addLayer(layer_OpenStreetMap_0);
+        function pop_BASIRHAT_1(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Ward Number :</th>\
+                        <td>' + (feature.properties['Word_no'] !== null ? autolinker.link(feature.properties['Word_no'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_BASIRHAT_1_0() {
+            return {
+                pane: 'pane_BASIRHAT_1',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 2.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,255,255,0.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_BASIRHAT_1');
+        map.getPane('pane_BASIRHAT_1').style.zIndex = 401;
+        map.getPane('pane_BASIRHAT_1').style['mix-blend-mode'] = 'normal';
+        var layer_BASIRHAT_1 = new L.geoJson(json_BASIRHAT_1, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_BASIRHAT_1',
+            layerName: 'layer_BASIRHAT_1',
+            pane: 'pane_BASIRHAT_1',
+            onEachFeature: pop_BASIRHAT_1,
+            style: style_BASIRHAT_1_0,
+        });
+        bounds_group.addLayer(layer_BASIRHAT_1);
+        map.addLayer(layer_BASIRHAT_1);
+        function pop_RoadofBasirhat_2(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+        }
+
+        function style_RoadofBasirhat_2_0() {
+            return {
+                pane: 'pane_RoadofBasirhat_2',
+                opacity: 1,
+                color: 'rgba(11,11,11,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_RoadofBasirhat_2');
+        map.getPane('pane_RoadofBasirhat_2').style.zIndex = 402;
+        map.getPane('pane_RoadofBasirhat_2').style['mix-blend-mode'] = 'normal';
+        var layer_RoadofBasirhat_2 = new L.geoJson(json_RoadofBasirhat_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_RoadofBasirhat_2',
+            layerName: 'layer_RoadofBasirhat_2',
+            pane: 'pane_RoadofBasirhat_2',
+            onEachFeature: pop_RoadofBasirhat_2,
+            style: style_RoadofBasirhat_2_0,
+        });
+        bounds_group.addLayer(layer_RoadofBasirhat_2);
+        map.addLayer(layer_RoadofBasirhat_2);
+        function pop_900mserviceareaofATM_3(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">900 m Service area of ATM</th>\
+                        <td class="visible-with-data" id="Name">' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_900mserviceareaofATM_3_0() {
+            return {
+                pane: 'pane_900mserviceareaofATM_3',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(214,185,250,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_900mserviceareaofATM_3');
+        map.getPane('pane_900mserviceareaofATM_3').style.zIndex = 403;
+        map.getPane('pane_900mserviceareaofATM_3').style['mix-blend-mode'] = 'normal';
+        var layer_900mserviceareaofATM_3 = new L.geoJson(json_900mserviceareaofATM_3, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_900mserviceareaofATM_3',
+            layerName: 'layer_900mserviceareaofATM_3',
+            pane: 'pane_900mserviceareaofATM_3',
+            onEachFeature: pop_900mserviceareaofATM_3,
+            style: style_900mserviceareaofATM_3_0,
+        });
+        bounds_group.addLayer(layer_900mserviceareaofATM_3);
+        map.addLayer(layer_900mserviceareaofATM_3);
+        function pop_900mserviceareaofBank_4(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">900 m Service area of Bank</th>\
+                        <td class="visible-with-data" id="Name">' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_900mserviceareaofBank_4_0() {
+            return {
+                pane: 'pane_900mserviceareaofBank_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(242,251,74,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_900mserviceareaofBank_4');
+        map.getPane('pane_900mserviceareaofBank_4').style.zIndex = 404;
+        map.getPane('pane_900mserviceareaofBank_4').style['mix-blend-mode'] = 'normal';
+        var layer_900mserviceareaofBank_4 = new L.geoJson(json_900mserviceareaofBank_4, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_900mserviceareaofBank_4',
+            layerName: 'layer_900mserviceareaofBank_4',
+            pane: 'pane_900mserviceareaofBank_4',
+            onEachFeature: pop_900mserviceareaofBank_4,
+            style: style_900mserviceareaofBank_4_0,
+        });
+        bounds_group.addLayer(layer_900mserviceareaofBank_4);
+        map.addLayer(layer_900mserviceareaofBank_4);
+        function pop_600mserviceareaofBank_5(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">600 m Service area of bank</th>\
+                        <td class="visible-with-data" id="Name">' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_600mserviceareaofBank_5_0() {
+            return {
+                pane: 'pane_600mserviceareaofBank_5',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(243,174,114,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_600mserviceareaofBank_5');
+        map.getPane('pane_600mserviceareaofBank_5').style.zIndex = 405;
+        map.getPane('pane_600mserviceareaofBank_5').style['mix-blend-mode'] = 'normal';
+        var layer_600mserviceareaofBank_5 = new L.geoJson(json_600mserviceareaofBank_5, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_600mserviceareaofBank_5',
+            layerName: 'layer_600mserviceareaofBank_5',
+            pane: 'pane_600mserviceareaofBank_5',
+            onEachFeature: pop_600mserviceareaofBank_5,
+            style: style_600mserviceareaofBank_5_0,
+        });
+        bounds_group.addLayer(layer_600mserviceareaofBank_5);
+        map.addLayer(layer_600mserviceareaofBank_5);
+        function pop_600mserviceareaofATM_6(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">600 m service area of ATM</th>\
+                        <td class="visible-with-data" id="Name">' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_600mserviceareaofATM_6_0() {
+            return {
+                pane: 'pane_600mserviceareaofATM_6',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(139,243,226,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_600mserviceareaofATM_6');
+        map.getPane('pane_600mserviceareaofATM_6').style.zIndex = 406;
+        map.getPane('pane_600mserviceareaofATM_6').style['mix-blend-mode'] = 'normal';
+        var layer_600mserviceareaofATM_6 = new L.geoJson(json_600mserviceareaofATM_6, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_600mserviceareaofATM_6',
+            layerName: 'layer_600mserviceareaofATM_6',
+            pane: 'pane_600mserviceareaofATM_6',
+            onEachFeature: pop_600mserviceareaofATM_6,
+            style: style_600mserviceareaofATM_6_0,
+        });
+        bounds_group.addLayer(layer_600mserviceareaofATM_6);
+        map.addLayer(layer_600mserviceareaofATM_6);
+        function pop_300mserviceareaofATM_7(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">300 m service area of ATM</th>\
+                        <td class="visible-with-data" id="Name">' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_300mserviceareaofATM_7_0() {
+            return {
+                pane: 'pane_300mserviceareaofATM_7',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(237,165,172,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_300mserviceareaofATM_7');
+        map.getPane('pane_300mserviceareaofATM_7').style.zIndex = 407;
+        map.getPane('pane_300mserviceareaofATM_7').style['mix-blend-mode'] = 'normal';
+        var layer_300mserviceareaofATM_7 = new L.geoJson(json_300mserviceareaofATM_7, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_300mserviceareaofATM_7',
+            layerName: 'layer_300mserviceareaofATM_7',
+            pane: 'pane_300mserviceareaofATM_7',
+            onEachFeature: pop_300mserviceareaofATM_7,
+            style: style_300mserviceareaofATM_7_0,
+        });
+        bounds_group.addLayer(layer_300mserviceareaofATM_7);
+        map.addLayer(layer_300mserviceareaofATM_7);
+        function pop_300mserviceareaofBank_8(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">300 m Service Area of Bank</th>\
+                        <td class="visible-with-data" id="Name">' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_300mserviceareaofBank_8_0() {
+            return {
+                pane: 'pane_300mserviceareaofBank_8',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(237,147,220,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_300mserviceareaofBank_8');
+        map.getPane('pane_300mserviceareaofBank_8').style.zIndex = 408;
+        map.getPane('pane_300mserviceareaofBank_8').style['mix-blend-mode'] = 'normal';
+        var layer_300mserviceareaofBank_8 = new L.geoJson(json_300mserviceareaofBank_8, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_300mserviceareaofBank_8',
+            layerName: 'layer_300mserviceareaofBank_8',
+            pane: 'pane_300mserviceareaofBank_8',
+            onEachFeature: pop_300mserviceareaofBank_8,
+            style: style_300mserviceareaofBank_8_0,
+        });
+        bounds_group.addLayer(layer_300mserviceareaofBank_8);
+        map.addLayer(layer_300mserviceareaofBank_8);
+        function pop_ROUTEOFALLBANK_9(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_ROUTEOFALLBANK_9_0() {
+            return {
+                pane: 'pane_ROUTEOFALLBANK_9',
+                opacity: 1,
+                color: 'rgba(238,7,11,1.0)',
+                dashArray: '2.0,4.0',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_ROUTEOFALLBANK_9');
+        map.getPane('pane_ROUTEOFALLBANK_9').style.zIndex = 409;
+        map.getPane('pane_ROUTEOFALLBANK_9').style['mix-blend-mode'] = 'normal';
+        var layer_ROUTEOFALLBANK_9 = new L.geoJson(json_ROUTEOFALLBANK_9, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_ROUTEOFALLBANK_9',
+            layerName: 'layer_ROUTEOFALLBANK_9',
+            pane: 'pane_ROUTEOFALLBANK_9',
+            onEachFeature: pop_ROUTEOFALLBANK_9,
+            style: style_ROUTEOFALLBANK_9_0,
+        });
+        bounds_group.addLayer(layer_ROUTEOFALLBANK_9);
+        map.addLayer(layer_ROUTEOFALLBANK_9);
+        function pop_ROUTEOFALLATM_10(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_ROUTEOFALLATM_10_0() {
+            return {
+                pane: 'pane_ROUTEOFALLATM_10',
+                opacity: 1,
+                color: 'rgba(36,31,180,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_ROUTEOFALLATM_10');
+        map.getPane('pane_ROUTEOFALLATM_10').style.zIndex = 410;
+        map.getPane('pane_ROUTEOFALLATM_10').style['mix-blend-mode'] = 'normal';
+        var layer_ROUTEOFALLATM_10 = new L.geoJson(json_ROUTEOFALLATM_10, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_ROUTEOFALLATM_10',
+            layerName: 'layer_ROUTEOFALLATM_10',
+            pane: 'pane_ROUTEOFALLATM_10',
+            onEachFeature: pop_ROUTEOFALLATM_10,
+            style: style_ROUTEOFALLATM_10_0,
+        });
+        bounds_group.addLayer(layer_ROUTEOFALLATM_10);
+        map.addLayer(layer_ROUTEOFALLATM_10);
+        function pop_Banks_11(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td class="visible-with-data" id="Name"colspan="2"><strong>Name:</strong><br />' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Banks_11_0() {
+            return {
+                pane: 'pane_Banks_11',
+                radius: 6.0,
+                opacity: 1,
+                color: 'rgba(255,255,255,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 2.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(227,26,28,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_Banks_11');
+        map.getPane('pane_Banks_11').style.zIndex = 411;
+        map.getPane('pane_Banks_11').style['mix-blend-mode'] = 'normal';
+        var layer_Banks_11 = new L.geoJson(json_Banks_11, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Banks_11',
+            layerName: 'layer_Banks_11',
+            pane: 'pane_Banks_11',
+            onEachFeature: pop_Banks_11,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_Banks_11_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_Banks_11);
+        map.addLayer(layer_Banks_11);
+        function pop_ATMs_12(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Name :</th>\
+                        <td class="visible-with-data" id="Name">' + (feature.properties['Name'] !== null ? autolinker.link(feature.properties['Name'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_ATMs_12_0() {
+            return {
+                pane: 'pane_ATMs_12',
+        rotationAngle: 0.0,
+        rotationOrigin: 'center center',
+        icon: L.icon({
+            iconUrl: 'markers/ATMs_12.svg',
+            iconSize: [17.479999999999997, 17.479999999999997]
+        }),
+                interactive: true,
+            }
+        }
+        map.createPane('pane_ATMs_12');
+        map.getPane('pane_ATMs_12').style.zIndex = 412;
+        map.getPane('pane_ATMs_12').style['mix-blend-mode'] = 'normal';
+        var layer_ATMs_12 = new L.geoJson(json_ATMs_12, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_ATMs_12',
+            layerName: 'layer_ATMs_12',
+            pane: 'pane_ATMs_12',
+            onEachFeature: pop_ATMs_12,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.marker(latlng, style_ATMs_12_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_ATMs_12);
+        map.addLayer(layer_ATMs_12);
+        var osmGeocoder = new L.Control.Geocoder({
+            collapsed: true,
+            position: 'topleft',
+            text: 'Search',
+            title: 'Testing'
+        }).addTo(map);
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .className += ' fa fa-search';
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .title += 'Search for a place';
+        var baseMaps = {};
+        var overlaysTree = [
+            {label: '<img src="legend/ATMs_12.png" /> ATMs', layer: layer_ATMs_12},
+            {label: '<img src="legend/Banks_11.png" /> Banks ', layer: layer_Banks_11},
+            {label: '<img src="legend/ROUTEOFALLATM_10.png" /> ROUTE OF ALL ATM', layer: layer_ROUTEOFALLATM_10},
+            {label: '<img src="legend/ROUTEOFALLBANK_9.png" /> ROUTE OF ALL BANK', layer: layer_ROUTEOFALLBANK_9},
+            {label: '<img src="legend/300mserviceareaofBank_8.png" /> 300 m service area of Bank', layer: layer_300mserviceareaofBank_8},
+            {label: '<img src="legend/300mserviceareaofATM_7.png" /> 300 m service area of ATM', layer: layer_300mserviceareaofATM_7},
+            {label: '<img src="legend/600mserviceareaofATM_6.png" /> 600 m service area of ATM', layer: layer_600mserviceareaofATM_6},
+            {label: '<img src="legend/600mserviceareaofBank_5.png" /> 600 m service area of Bank', layer: layer_600mserviceareaofBank_5},
+            {label: '<img src="legend/900mserviceareaofBank_4.png" /> 900 m service area of Bank', layer: layer_900mserviceareaofBank_4},
+            {label: '<img src="legend/900mserviceareaofATM_3.png" /> 900 m service area of ATM', layer: layer_900mserviceareaofATM_3},
+            {label: '<img src="legend/RoadofBasirhat_2.png" /> Road of Basirhat', layer: layer_RoadofBasirhat_2},
+            {label: '<img src="legend/BASIRHAT_1.png" /> BASIRHAT', layer: layer_BASIRHAT_1},
+            {label: "OpenStreetMap", layer: layer_OpenStreetMap_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+        map.addControl(new L.Control.Search({
+            layer: layer_Banks_11,
+            initial: false,
+            hideMarkerOnCollapse: true,
+            propertyName: 'Name'}));
+        document.getElementsByClassName('search-button')[0].className +=
+         ' fa fa-binoculars';
+        var mapDiv = document.getElementById('map');
+        var row = document.createElement('div');
+        row.className="row";
+        row.id="all";
+        row.style.height = "100%";
+        var col1 = document.createElement('div');
+        col1.className="col9";
+        col1.id = "mapWindow";
+        col1.style.height = "99%";
+        col1.style.width = "80%";
+        col1.style.display = "inline-block";
+        var col2 = document.createElement('div');
+        col2.className="col3";
+        col2.id = "menu";
+        col2.style.display = "inline-block";
+        mapDiv.parentNode.insertBefore(row, mapDiv);
+        document.getElementById("all").appendChild(col1);
+        document.getElementById("all").appendChild(col2);
+        col1.appendChild(mapDiv)
+        var Filters = {"Word_no": "int","Name": "str"};
+        function filterFunc() {
+          map.eachLayer(function(lyr){
+          if ("options" in lyr && "dataVar" in lyr["options"]){
+            features = this[lyr["options"]["dataVar"]].features.slice(0);
+            try{
+              for (key in Filters){
+                keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
+                if (Filters[key] == "str" || Filters[key] == "bool"){
+                  var selection = [];
+                  var options = document.getElementById("sel_" + keyS).options
+                  for (var i=0; i < options.length; i++) {
+                    if (options[i].selected) selection.push(options[i].value);
+                  }
+                    try{
+                      if (key in features[0].properties){
+                        for (i = features.length - 1;
+                          i >= 0; --i){
+                          if (selection.indexOf(
+                          features[i].properties[key])<0
+                          && selection.length>0) {
+                          features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                  }
+                }
+                if (Filters[key] == "int"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (parseInt(features[i].properties[key])
+                          < sliderVals[0]
+                          || parseInt(features[i].properties[key])
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "real"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (features[i].properties[key]
+                          < sliderVals[0]
+                          || features[i].properties[key]
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "date"
+                  || Filters[key] == "datetime"
+                  || Filters[key] == "time"){
+                  try{
+                    if (key in features[0].properties){
+                      HTMLkey = key.replace(/[&\/\\#,+()$~%.'":*?<>{} ]/g, '');
+                      startdate = document.getElementById("dat_" +
+                        HTMLkey + "_date1").value.replace(" ", "T");
+                      enddate = document.getElementById("dat_" +
+                        HTMLkey + "_date2").value.replace(" ", "T");
+                      for (i = features.length - 1; i >= 0; --i){
+                        if (features[i].properties[key] < startdate
+                          || features[i].properties[key] > enddate){
+                          features.splice(i,1);
+                        }
+                      }
+                    }
+                  } catch(err){
+                  }
+                }
+              }
+            } catch(err){
+            }
+          this[lyr["options"]["layerName"]].clearLayers();
+          this[lyr["options"]["layerName"]].addData(features);
+          }
+          })
+        }
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Word_no = document.createElement("div");
+            div_Word_no.id = "div_Word_no";
+            div_Word_no.className = "slider";
+            document.getElementById("menu").appendChild(div_Word_no);
+            var lab_Word_no = document.createElement('div');
+            lab_Word_no.innerHTML  = 'Word_no: <span id="val_Word_no"></span>';
+            lab_Word_no.className = 'filterlabel';
+            document.getElementById("menu").appendChild(lab_Word_no);
+            var reset_Word_no = document.createElement('div');
+            reset_Word_no.innerHTML = 'clear filter';
+            reset_Word_no.className = 'filterlabel';
+            lab_Word_no.className = 'filterlabel';
+            reset_Word_no.onclick = function() {
+                sel_Word_no.noUiSlider.reset();
+            };
+            document.getElementById("menu").appendChild(reset_Word_no);
+            var sel_Word_no = document.getElementById('div_Word_no');
+            noUiSlider.create(sel_Word_no, {
+                connect: true,
+                start: [1, 23],
+                step: 1,
+                format: wNumb({
+                    decimals: 0,
+                    }),
+                range: {
+                min: 1,
+                max: 23
+                }
+            });
+            sel_Word_no.noUiSlider.on('update', function (values) {
+            filterVals =[];
+            for (value in values){
+            filterVals.push(parseInt(value))
+            }
+            val_Word_no = document.getElementById('val_Word_no');
+            val_Word_no.innerHTML = values.join(' - ');
+                filterFunc()
+            });
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Name = document.createElement('div');
+            div_Name.id = "div_Name";
+            div_Name.className= "filterselect";
+            document.getElementById("menu").appendChild(div_Name);
+            sel_Name = document.createElement('select');
+            sel_Name.multiple = true;
+            sel_Name.size = 10;
+            sel_Name.id = "sel_Name";
+            var Name_options_str = "<option value='' unselected></option>";
+            sel_Name.onchange = function(){filterFunc()};
+            Name_options_str  += '<option value="0 - 300">0 - 300</option>';
+            Name_options_str  += '<option value="0 - 600">0 - 600</option>';
+            Name_options_str  += '<option value="0 - 600 m">0 - 600 m</option>';
+            Name_options_str  += '<option value="0 - 900">0 - 900</option>';
+            Name_options_str  += '<option value="ALLAHABAD BANK">ALLAHABAD BANK</option>';
+            Name_options_str  += '<option value="Axis Bank ATM">Axis Bank ATM</option>';
+            Name_options_str  += '<option value="Axis Bank Branch">Axis Bank Branch</option>';
+            Name_options_str  += '<option value="Bank Of India ATM">Bank Of India ATM</option>';
+            Name_options_str  += '<option value="Bank Of India ATM, Sangrampur">Bank Of India ATM, Sangrampur</option>';
+            Name_options_str  += '<option value="Bank Of India, Basirhat Branch & ATM">Bank Of India, Basirhat Branch & ATM</option>';
+            Name_options_str  += '<option value="Bank Of India, Basirhat Branch & ATM - Bank Of India ATM, Sangrampur">Bank Of India, Basirhat Branch & ATM - Bank Of India ATM, Sangrampur</option>';
+            Name_options_str  += '<option value="Bank of India - Jhinka Branch">Bank of India - Jhinka Branch</option>';
+            Name_options_str  += '<option value="Bank of India ATM">Bank of India ATM</option>';
+            Name_options_str  += '<option value="Bank of india">Bank of india</option>';
+            Name_options_str  += '<option value="CANARA BANK - BASIRHAT">CANARA BANK - BASIRHAT</option>';
+            Name_options_str  += '<option value="Canara Bank">Canara Bank</option>';
+            Name_options_str  += '<option value="Canara Bank ATM">Canara Bank ATM</option>';
+            Name_options_str  += '<option value="Central Bank Of India ATM, Basirhat">Central Bank Of India ATM, Basirhat</option>';
+            Name_options_str  += '<option value="E-Corner Of SBI">E-Corner Of SBI</option>';
+            Name_options_str  += '<option value="HDFC Bank">HDFC Bank</option>';
+            Name_options_str  += '<option value="HDFC Bank ATM">HDFC Bank ATM</option>';
+            Name_options_str  += '<option value="ICICI Bank ATM">ICICI Bank ATM</option>';
+            Name_options_str  += '<option value="ICICI Bank Atm">ICICI Bank Atm</option>';
+            Name_options_str  += '<option value="ICICI Bank Basirhat - Branch & ATM">ICICI Bank Basirhat - Branch & ATM</option>';
+            Name_options_str  += '<option value="IDBI Bank">IDBI Bank</option>';
+            Name_options_str  += '<option value="IDBI Bank ATM">IDBI Bank ATM</option>';
+            Name_options_str  += '<option value="Indian Overseas Bank - Basirhat Branch">Indian Overseas Bank - Basirhat Branch</option>';
+            Name_options_str  += '<option value="SBI ATM, Basirhat">SBI ATM, Basirhat</option>';
+            Name_options_str  += '<option value="SBI Customer Service Point">SBI Customer Service Point</option>';
+            Name_options_str  += '<option value="SBI E-Corner">SBI E-Corner</option>';
+            Name_options_str  += '<option value="SBI Kiosk">SBI Kiosk</option>';
+            Name_options_str  += '<option value="State Bank ATM">State Bank ATM</option>';
+            Name_options_str  += '<option value="State Bank Of India">State Bank Of India</option>';
+            Name_options_str  += '<option value="State Bank e-Corner, Basirhat">State Bank e-Corner, Basirhat</option>';
+            Name_options_str  += '<option value="State Bank of India - Basirhat College More Branch">State Bank of India - Basirhat College More Branch</option>';
+            Name_options_str  += '<option value="State Bank of India BASIRHAT">State Bank of India BASIRHAT</option>';
+            Name_options_str  += '<option value="State Bank of India BASIRHAT - CANARA BANK - BASIRHAT">State Bank of India BASIRHAT - CANARA BANK - BASIRHAT</option>';
+            Name_options_str  += '<option value="UCO Bank">UCO Bank</option>';
+            Name_options_str  += '<option value="United Bank of India - Basirhat Branch">United Bank of India - Basirhat Branch</option>';
+            Name_options_str  += '<option value="United Bank of India - Basirhat College Branch">United Bank of India - Basirhat College Branch</option>';
+            Name_options_str  += '<option value="United Bank of India ATM">United Bank of India ATM</option>';
+            sel_Name.innerHTML = Name_options_str;
+            div_Name.appendChild(sel_Name);
+            var lab_Name = document.createElement('div');
+            lab_Name.innerHTML = 'Name';
+            lab_Name.className = 'filterlabel';
+            div_Name.appendChild(lab_Name);
+            var reset_Name = document.createElement('div');
+            reset_Name.innerHTML = 'clear filter';
+            reset_Name.className = 'filterlabel';
+            reset_Name.onclick = function() {
+                var options = document.getElementById("sel_Name").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_Name.appendChild(reset_Name);
+        </script>
+    </body>
+</html>
